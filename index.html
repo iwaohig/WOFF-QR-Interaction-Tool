@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WOFF QR Scanner and Sender</title>
+<style>
+  body {
+    font-family: 'Arial', sans-serif;
+    margin: 0;
+    padding: 20px;
+  }
+  button {
+    padding: 12px 24px;
+    font-size: 16px;
+    margin-top: 10px;
+    cursor: pointer;
+    border: none;
+    background-color: #007bff;
+    color: white;
+    border-radius: 5px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    transition: background-color 0.3s;
+  }
+  button:hover {
+    background-color: #0056b3;
+  }
+  #output, #messageSent {
+    margin-top: 20px;
+  }
+  /* Styles for the table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+  }
+  th, td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+  }
+  th {
+    background-color: #f2f2f2;
+  }
+  /* Add styles for mobile devices */
+  @media (max-width: 600px) {
+    button {
+      width: 100%;
+      padding: 15px;
+      font-size: 18px;
+    }
+    #output, #messageSent {
+      margin-top: 15px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<button id="scanButton">Scan QR Code</button>
+<div id="output"></div>
+<button id="sendButton" style="display:none;">Send to Talk Room</button>
+<div id="messageSent"></div>
+
+<script charset="utf-8" src="https://static.worksmobile.net/static/wm/woff/edge/3.6/sdk.js"></script>
+<script>
+  let scannedData;
+
+  // Initialize WOFF SDK
+  woff.init({
+    woffId: "MfQwybVNFN7gEC3n9ztt1g" // Replace with your actual WOFF ID
+  }).then(() => {
+    document.getElementById('scanButton').addEventListener('click', function() {
+      if (!woff.isInClient()) {
+        alert('Please use this app within the WOFF client.');
+      } else {
+        woff.scanQR().then(result => {
+          scannedData = JSON.parse(result.value);
+          displayData(scannedData);
+          document.getElementById('sendButton').style.display = 'block';
+        }).catch(err => {
+          console.error('Scan failed', err);
+        });
+      }
+    });
+
+    document.getElementById('sendButton').addEventListener('click', function() {
+      if (!woff.isInClient()) {
+        alert('Please use this app within the WOFF client.');
+      } else {
+        const patientInfo = scannedData['傷病者情報'];
+        let messageContent = '傷病者情報:\n';
+        for (let key in patientInfo) {
+          messageContent += `${key}: ${patientInfo[key]}\n`;
+        }
+
+        woff.sendMessage({
+          'content': messageContent
+        }).then(() => {
+          document.getElementById('messageSent').textContent = 'Message sent to talk room.';
+          // Close the WOFF window after sending the message
+          woff.closeWindow();
+        }).catch(error => {
+          console.error('Error sending message:', error);
+        });
+      }
+    });
+
+  }).catch(err => {
+    console.error('Initialization failed', err);
+  });
+
+  function displayData(data) {
+    const patientInfo = data['傷病者情報'];
+    const outputDiv = document.getElementById('output');
+    const table = document.createElement('table');
+    let tableHTML = '<tr><th>項目</th><th>情報</th></tr>';
+    for (let key in patientInfo) {
+      tableHTML += `<tr><td>${key}</td><td>${patientInfo[key]}</td></tr>`;
+    }
+    table.innerHTML = tableHTML;
+    outputDiv.innerHTML = '';
+    outputDiv.appendChild(table);
+  }
+</script>
+</body>
+</html>
